@@ -4,6 +4,11 @@ from typing import Callable as __Callable
 
 
 # TODO: extract the typing/.pyi bits to simplify this function
+#
+# Also: add some tests for this, specifically.
+# I'm not passionate about spending lots of time on tests (due to time constraints)
+# but this deserved them.
+#
 def load_globals(
     package_pattern: str,
     submodule_prefix: str,
@@ -38,6 +43,7 @@ def load_globals(
 
     pyi_imports = set()
     pyi_contents: str = pyi_template
+    class_name_occurrences: dict[str, int] = {}
 
     def extract_types(type_str: str) -> list[str]:
         # Regex to match anything inside square brackets, allowing for nested brackets
@@ -46,15 +52,24 @@ def load_globals(
         split_types = re.split(r",\s*(?![^[]*\])", matches[-1])
         return split_types
 
-    def type_hint_without_namespaces(type_str: str):
+    def type_hint_without_namespaces(type_str: str, class_name_occurrences: dict):
         # Extract anything inside square brackets
         matches = re.findall(r"\[([^]]+)]", type_str)
 
         if matches:
             # Split by commas outside of nested brackets
             split_types = re.split(r",\s*(?![^[]*\])", matches[-1])
-            # Get the class names without the namespaces
-            simple_types = [type_.rsplit(".", 1)[-1] for type_ in split_types]
+            simple_types = []
+            for type_ in split_types:
+                class_name = type_.rsplit(".", 1)[-1]
+                occurrence_count = class_name_occurrences.get(class_name, 0) + 1
+                class_name_occurrences[class_name] = occurrence_count
+                alias_name = (
+                    class_name
+                    if occurrence_count == 1
+                    else f"{class_name}{occurrence_count}"
+                )
+                simple_types.append(alias_name)
             # Replace the original type hint with the simple class names
             return type_str.replace(matches[-1], ", ".join(simple_types))
 
@@ -79,11 +94,28 @@ def load_globals(
 
             if pyi_output_file:
                 variable_type_hint = str(submodule_type_hints.get(key))
+
+                # Hack - run this first because it increments the class occurrence counts
+                simple_type_hint = type_hint_without_namespaces(
+                    variable_type_hint, class_name_occurrences
+                )
+
                 discovered_types = extract_types(variable_type_hint)
                 for discovered_type in discovered_types:
                     module_name, class_name = discovered_type.rsplit(".", 1)
-                    pyi_imports.add(f"from {module_name} import {class_name}")
-                simple_type_hint = type_hint_without_namespaces(variable_type_hint)
+                    occurrence_count = class_name_occurrences.get(class_name, 1)
+                    alias_name = (
+                        class_name
+                        if occurrence_count == 1
+                        else f"{class_name}{occurrence_count}"
+                    )
+                    if class_name == alias_name:
+                        pyi_imports.add(f"from {module_name} import {class_name}")
+                    else:
+                        pyi_imports.add(
+                            f"from {module_name} import {class_name} as {alias_name}"
+                        )
+
                 pyi_contents += f"{key}: {simple_type_hint}\n"
 
     pyi_import_contents: str = "\n".join(sorted(pyi_imports))
