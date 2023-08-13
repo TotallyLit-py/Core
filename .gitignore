@@ -1,0 +1,36 @@
+# .gitignore Version 0.0.1 - 2023-08-13
+
+# Never ever ever ever ever...
+.env
+
+# Python
+__pycache__
+*.py[cod]
+dist/
+wheels/
+*.pkl
+
+# In case your venv has 'venv' or 'virtualenv' in the name
+*venv*/
+*virtualenv*/
+
+# Editors
+.vscode
+.idea
+.vs
+
+# Jupyter and IPython
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# Databases (SQLite3)
+*.sqlite*
+*.db
+
+# FAISS vectorstore
+*.index
+*.faiss
+
+# Misc
+*.log
