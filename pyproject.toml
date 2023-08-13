@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "totallylit-core"
+version = "0.0.1"
+description = "Core of the TotallyLit framework"
+authors = ["Mrowr Purr <mrowr.purr@gmail.com>"]
+license = "0BSD"
+readme = "README.md"
+packages = [{ include = "totallylit" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.scripts]
+totallylit-update-extensions = "totallylit.internal.extension_lookup.update_pyi:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
