@@ -11,10 +11,11 @@ def load_globals(
     pyi_output_file: str = None,
     verbose: bool = True,
     ignore_packages: list[str] = [],
-    globals_func: __Callable[[], dict[str, any]] = globals,
+    sys_module_name: str = None,
     print_to: __TextIOWrapper = __stdout,
     exclude_variable_patterns: list[str] = [r"^__.*", r"^[A-Z].*"],
     include_variable_patterns: list[str] = [],
+    pyi_template: str = "",
 ) -> None:
     from .find_package_submodules import find_package_submodules
 
@@ -32,10 +33,11 @@ def load_globals(
 
     import importlib
     import re
+    import sys
     from typing import get_type_hints
 
     pyi_imports = set()
-    pyi_contents: str = ""
+    pyi_contents: str = pyi_template
 
     def extract_types(type_str: str) -> list[str]:
         # Regex to match anything inside square brackets, allowing for nested brackets
@@ -70,7 +72,11 @@ def load_globals(
             )
             if should_exclude or (include_variable_patterns and not should_include):
                 continue
-            globals_func()[key] = value
+
+            if sys_module_name:
+                print(f"sys.modules[{sys_module_name}][{key}] = {value}")
+                setattr(sys.modules[sys_module_name], key, value)
+
             if pyi_output_file:
                 variable_type_hint = str(submodule_type_hints.get(key))
                 discovered_types = extract_types(variable_type_hint)
